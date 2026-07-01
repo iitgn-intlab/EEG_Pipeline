@@ -43,7 +43,7 @@ def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 
         std_v = np.std(variances)
         threshold = 3 * std_v
         bad_channels = [
-            raw_clean.ch_names[i]
+            raw.ch_names[i]
             for i in range(len(variances))
             if abs(variances[i] - mean_v) > threshold
         ]
