@@ -33,7 +33,7 @@ def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 
     It then returns the processed raw.
     """
     raw.resample(sfreq = res_freq)
-    raw.notch_filter(freqs = [60], fir_design = "firwin")
+    raw.notch_filter(freqs = notch_freq, fir_design = "firwin")
     raw.filter(l_freq = l_filter, h_freq = h_filter)
     raw.set_eeg_reference(reference)
     if bad_channel:
