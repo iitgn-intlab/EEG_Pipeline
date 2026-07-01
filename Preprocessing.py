@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger('matplotlib.animation')
 logger.setLevel(logging.DEBUG)
 
-def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 100, reference = "average" auto_rem_ica = True, ica_method = "infomax" bad_channel = True, rem_bad_channel = False, interpolate_bad_channel = True, n_comp_ica = None, remove_labels = ["muscle artifact", "eye blink", "heart beat","line noise","channel noise"]):
+def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 100, reference = "average", auto_rem_ica = True, ica_method = "infomax", bad_channel = True, rem_bad_channel = False, interpolate_bad_channel = True, n_comp_ica = None, remove_labels = ["muscle artifact", "eye blink", "heart beat","line noise","channel noise"]):
     """
     This function preprocess a raw file with the following steps:
     1. Resampling.
