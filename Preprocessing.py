@@ -48,10 +48,10 @@ def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 
             if abs(variances[i] - mean_v) > threshold
         ]
         print("Bad channels:",bad_channels)
-        raw_clean.info["bads"] = bad_channels
+        raw.info["bads"] = bad_channels
         
         if interpolate_bad_channel:
-            raw_clean.interpolate_bads(
+            raw.interpolate_bads(
                 reset_bads=True,
                 verbose=False
             )
