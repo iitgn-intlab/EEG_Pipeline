@@ -40,6 +40,7 @@ def Load_EEG_file(file = None):
             sfreq=fs,
             ch_types="eeg"
         )
+        raw.annotations.append(timestamps, [0] * len(timestamps))
         raw = mne.io.RawArray(data, info)
     elif file[-3:] == "set":
         raw = mne.io.read_raw_eeglab(input_fname=file, preload=True)
