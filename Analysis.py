@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger('matplotlib.animation')
 logger.setLevel(logging.DEBUG)
 
-def FOOOFer(raw,fmin = 1, fmax = 30, n_fft = 250, channel_list = [],peak_width_limits = [1,8], max_n_peaks = 6, plot= True, calc_alpha = True, calc_beta = True, calc_gamma = True, max_gamma = 100, errors = True ):
+def FOOOFer(raw,fmin = 1, fmax = 30, n_fft = 250, channel_list = [],peak_width_limits = [1,8], max_n_peaks = 6, plot= True, calc_delta = True, calc_theta = True, calc_alpha = True, calc_beta = True, calc_gamma = True, max_gamma = 100, errors = True ):
     """
     This function takes a raw file and fits FOOOF to it. It then returns the values wanted out of the following in the same order:
     1. FOOOF Plot
@@ -46,6 +46,14 @@ def FOOOFer(raw,fmin = 1, fmax = 30, n_fft = 250, channel_list = [],peak_width_l
         if plot:
             plot = fm.plot()
             result.append(plot)
+        if calc_delta:
+            delta_peak_freq = get_band_peak_fm(fm, [1, 4], select_highest=True)[0]
+            delta_peak_power = get_band_peak_fm(fm, [1, 4], select_highest=True)[1]
+        result.append(delta_peak_freq,delta_peak_power)
+        if calc_theta:
+            theta_peak_freq = get_band_peak_fm(fm, [4, 8], select_highest=True)[0]
+            theta_peak_power = get_band_peak_fm(fm, [4, 8], select_highest=True)[1]
+        result.append(delta_peak_freq,delta_peak_power)
         if calc_alpha:
             alpha_peak_freq = get_band_peak_fm(fm, [8, 12], select_highest=True)[0]
             alpha_peak_power = get_band_peak_fm(fm, [8, 12], select_highest=True)[1] 
@@ -56,7 +64,7 @@ def FOOOFer(raw,fmin = 1, fmax = 30, n_fft = 250, channel_list = [],peak_width_l
         result.append(beta_peak_freq, beta_peak_power)
         if calc_gamma:
             gamma_peak_freq = get_band_peak_fm(fm, [30, max_gamma], select_highest=True)[0]
-            gamma_peak_power = get_band_peak_fm(fm, [8, max_gamma], select_highest=True)[1]
+            gamma_peak_power = get_band_peak_fm(fm, [30, max_gamma], select_highest=True)[1]
         result.append(gamma_peak_freq, gamma_peak_power)
         if errors:
             r2 = fm.r_squared_
