@@ -40,8 +40,8 @@ def Load_EEG_file(file = None):
             sfreq=fs,
             ch_types="eeg"
         )
-        raw.annotations.append(timestamps, [0] * len(timestamps))
         raw = mne.io.RawArray(data, info)
+        raw.annotations.append(timestamps, [0] * len(timestamps),"placeholder")
         mapping = {
             "p4": "P4",
             "p4": "P4",
