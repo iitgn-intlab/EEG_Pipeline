@@ -42,6 +42,28 @@ def Load_EEG_file(file = None):
         )
         raw.annotations.append(timestamps, [0] * len(timestamps))
         raw = mne.io.RawArray(data, info)
+        mapping = {
+            "p4": "P4",
+            "p4": "P4",
+            "Cp6": "CP6",
+            "Po3": "PO3",
+            "Po4": "PO4",
+            "Fc1": "FC1",
+            "Fc2": "FC2",
+            "Af3": "AF3",
+            "Cp1": "CP1",
+            "Cp2": "CP2",
+            "Fc5": "FC5",
+            "Fc6": "FC6",
+            "Cp5": "CP5",
+        }
+        
+        raw.rename_channels(mapping)
+        
+        # Standard 10-20 montage
+        montage = mne.channels.make_standard_montage("standard_1020")
+        
+        raw.set_montage(montage, on_missing="warn")
     elif file[-3:] == "set":
         raw = mne.io.read_raw_eeglab(input_fname=file, preload=True)
     print(raw.info)
