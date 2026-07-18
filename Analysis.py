@@ -88,3 +88,4 @@ def connectomer(raw, duration = 10, fmin = 1, fmax = 45):
     
     con_matrix = con.get_data(output='dense')
     print("Connectivity Matrix Shape:", con_matrix.shape)
+    return con_matrix
