@@ -66,5 +66,7 @@ def Load_EEG_file(file = None, montage = "standard_1020"):
         raw.set_montage(montage, on_missing="warn")
     elif file[-3:] == "set":
         raw = mne.io.read_raw_eeglab(input_fname=file, preload=True)
+    elif file[-3:] == "bdf":
+        raw = mne.io.read_raw_bdf(input_fname = file, preload = True)
     print(raw.info)
     return raw
