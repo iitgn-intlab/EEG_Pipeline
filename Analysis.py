@@ -5,6 +5,7 @@ import numpy as np
 from fooof import FOOOF
 import pandas as pd
 import glob
+from mne_connectivity import spectral_connectivity_epochs
 from fooof import FOOOFGroup,FOOOF
 from mne.preprocessing import ICA
 from mne_icalabel import label_components
@@ -13,7 +14,7 @@ import pandas as pd
 from fooof.analysis import get_band_peak_fm
 import warnings
 from statistics import mean
-
+from Preprocessing import epocher
 
 warnings.filterwarnings("ignore")
 mne.set_log_level('ERROR')   
@@ -72,3 +73,18 @@ def FOOOFer(raw,fmin = 1, fmax = 30, n_fft = 250, channel_list = [],peak_width_l
             result.append(r2,error)
         channel_result[channel_name] = result
     return channel_result
+def connectomer(raw, duration = 10, fmin = 1, fmax = 45):
+    epochs = epocher(raw, duration = duration)
+    sfreq = raw.info['sfreq']
+    con = spectral_connectivity_epochs(
+        epochs, 
+        method='plv', 
+        sfreq=sfreq, 
+        fmin=fmin, 
+        fmax=fmax, 
+        faverage=True, 
+        n_jobs=1
+    )
+    
+    con_matrix = con.get_data(output='dense')
+    print("Connectivity Matrix Shape:", con_matrix.shape)
