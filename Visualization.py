@@ -25,4 +25,4 @@ logger.setLevel(logging.DEBUG)
 def Plot_over_time(raw, zoom = 5e-7):
     return raw.plot(scalings = dict(mag=1e-12, grad=4e-11, eeg=20e-6*zoom, eog=150e-6, ecg=5e-4,
      emg=1e-3, ref_meg=1e-12, misc=1e-3, stim=1,
-     resp=1, chpi=1e-4, whitened=1e2)))
+     resp=1, chpi=1e-4, whitened=1e2))
