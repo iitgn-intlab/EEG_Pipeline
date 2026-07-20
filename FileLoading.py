@@ -25,11 +25,72 @@ def Load_EEG_file(file = None, montage = "standard_1020"):
     if file == None:
         print("whoops, expected some path got None?")
         return
-    elif file[-3:] == "xdf":
+    elif file.lower().endswith(".bdf"):
+        raw = mne.io.read_raw_bdf(file, preload=True)
+
+        # ---------- Attach events from the matching BIDS sidecar ----------
+        events_file = file.replace("_eeg.bdf", "_events.tsv")
+
+        if os.path.exists(events_file):
+            ev = pd.read_csv(events_file, sep="\t")
+
+            onsets = pd.to_numeric(
+                ev["onset"], errors="coerce"
+            ).fillna(0).to_numpy(float)
+
+            durations = pd.to_numeric(
+                ev["duration"], errors="coerce"
+            ).fillna(0).to_numpy(float)
+
+            descriptions = ev["value"].astype(str).to_numpy()
+
+            annotations = mne.Annotations(
+                onset=onsets,
+                duration=durations,
+                description=descriptions
+            )
+            print(f"Loaded {len(annotations)} annotations from {os.path.basename(events_file)}")
+            raw.set_annotations(annotations)
+
+        else:
+            print("No events file found:", events_file)
+
+        # ---------- Set montage ----------
+        if montage is not None:
+            raw.set_montage(
+                mne.channels.make_standard_montage("GSN-HydroCel-129"),
+                on_missing="warn"
+            )
+    elif file.lower().endswith(".xdf"):
         streams, header = pyxdf.load_xdf(file)
-        eeg_stream = streams[2]
+        for i, s in enumerate(streams):
+            print("=" * 60)
+            print("Index:", i)
+            print("Name :", s["info"]["name"][0])
+            print("Type :", s["info"]["type"][0])
+            print("Samples:", len(s["time_series"]))
+        eeg_stream = None
+        marker_stream = None
+
+        for stream in streams:
+            stream_type = stream["info"]["type"][0]
+
+            if stream_type == "EEG":
+                eeg_stream = stream
+
+            elif (
+                stream_type == "Markers"
+                and len(stream["time_series"]) > 0
+            ):
+                marker_stream = stream
+
+        if eeg_stream is None:
+            raise ValueError("No EEG stream found.")
+
+        if marker_stream is None:
+            raise ValueError("No marker stream found.")
         data = eeg_stream["time_series"].T     
-        timestamps = eeg_stream["time_stamps"]
+        #timestamps = eeg_stream["time_stamps"] #Not used anywhere
         channels = [
             ch["label"][0]
             for ch in eeg_stream["info"]["desc"][0]["channels"][0]["channel"]
@@ -41,7 +102,25 @@ def Load_EEG_file(file = None, montage = "standard_1020"):
             ch_types="eeg"
         )
         raw = mne.io.RawArray(data, info)
-        raw.annotations.append(timestamps, [0] * len(timestamps),"placeholder")
+        onsets = (
+            marker_stream["time_stamps"]
+            - eeg_stream["time_stamps"][0]
+        )
+
+        descriptions = [
+            x[0]
+            for x in marker_stream["time_series"]
+        ]
+
+        durations = np.zeros(len(onsets))
+
+        annotations = mne.Annotations(
+            onset=onsets,
+            duration=durations,
+            description=descriptions
+        )
+
+        raw.set_annotations(annotations)
         if montage == "standard_1020":
             mapping = {
                 "p4": "P4",
@@ -64,9 +143,11 @@ def Load_EEG_file(file = None, montage = "standard_1020"):
         # Standard 10-20 montage
         montage = mne.channels.make_standard_montage(montage)
         raw.set_montage(montage, on_missing="warn")
-    elif file[-3:] == "set":
+    elif file.lower().endswith(".set"):
         raw = mne.io.read_raw_eeglab(input_fname=file, preload=True)
-    elif file[-3:] == "bdf":
-        raw = mne.io.read_raw_bdf(input_fname = file, preload = True)
+    else:
+        raise ValueError(f"Unsupported EEG file: {file}")
     print(raw.info)
+    print(raw.annotations)
+    print(raw.annotations.description)
     return raw
