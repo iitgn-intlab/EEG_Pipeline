@@ -41,7 +41,7 @@ def Load_EEG_file(file = None, montage = "standard_1020"):
             ch_types="eeg"
         )
         raw = mne.io.RawArray(data, info)
-        raw.annotations.append(timestamps, [0] * len(timestamps))
+        raw.annotations.append(timestamps, [0] * len(timestamps),"placeholder")
         if montage == "standard_1020":
             mapping = {
                 "p4": "P4",
