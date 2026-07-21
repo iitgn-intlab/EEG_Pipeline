@@ -32,8 +32,8 @@ def Plot_markers_over_time(raw):
     all_events, all_event_id = mne.events_from_annotations(raw)
     return mne.viz.plot_events(events=all_events, event_id=all_event_id, sfreq=raw.info["sfreq"])
 
-def Plot_topoplot_epochs(raw, tmin = -0.2, tmax  = 1):
+def Plot_topoplot_epochs(raw, tmin = -0.2, tmax  = 1, event_id  = 5):
     all_events, all_event_id = mne.events_from_annotations(raw)
-    epochs = mne.Epochs(raw, all_events, event_id=4,baseline = (tmin,0), tmin=tmin, tmax = tmax)
+    epochs = mne.Epochs(raw, all_events, event_id=event_id,baseline = (tmin,0), tmin=tmin, tmax = tmax)
     evoked = epochs.average()
     return evoked.plot_topomap()
