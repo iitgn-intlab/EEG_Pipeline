@@ -89,3 +89,8 @@ def connectomer(raw, duration = 10, fmin = 1, fmax = 45):
     con_matrix = con.get_data(output='dense')
     print("Connectivity Matrix Shape:", con_matrix.shape)
     return con_matrix
+
+def epocher(raw, tmin = -0.2, tmax = 10 ):
+    all_events, all_event_id = mne.events_from_annotations(raw)
+    epochs = mne.Epochs(raw, all_events, event_id=4,baseline = (tmin,0) tmin=tmin, tmax = tmax)
+    return epochs

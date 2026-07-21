@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger('matplotlib.animation')
 logger.setLevel(logging.DEBUG)
 
-def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 100, reference = "average", auto_rem_ica = True, ica_method = "infomax", bad_channel = True, rem_bad_channel = False, interpolate_bad_channel = True, n_comp_ica = None, remove_labels = ["muscle artifact", "eye blink", "heart beat","line noise","channel noise"], visualize_ica_eye = True):
+def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 100, reference = "average", auto_rem_ica = True, ica_method = "infomax", bad_channel = True, rem_bad_channel = False, interpolate_bad_channel = True, n_comp_ica = None, remove_labels = ["muscle artifact", "eye blink", "heart beat","line noise","channel noise"], visualize_ica_eye = False):
     """
     This function preprocess a raw file with the following steps:
     1. Resampling.
@@ -71,20 +71,7 @@ def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 
         reconst_raw = raw.copy()
         ica.apply(reconst_raw, exclude=exclude_idx)
         raw = reconst_raw
-    return raw
-
-def epocher(raw, duration = 10):
-    """
-    This function creates epochs of required duration.
-    """
-    epochs = mne.make_fixed_length_epochs(
-    raw,
-    duration=duration,
-    overlap=0.0,
-    preload=True,
-    verbose=False
-    )
-    return epochs        
+    return raw        
 
 def ocular_fp_evidence(ica, raw_ica_fit,eog_proxy, ocular):
     """Reviewer evidence for ocular ICs, with BOTH a vertical and a horizontal Fp proxy:
