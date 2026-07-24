@@ -1,3 +1,4 @@
+import os
 import mne
 import matplotlib.pyplot as plt
 import pyxdf
@@ -19,6 +20,9 @@ mne.set_log_level('ERROR')
 import logging
 logger = logging.getLogger('matplotlib.animation')
 logger.setLevel(logging.DEBUG)
+
+# Path to the R1_mini_L100_bdf dataset folder.
+R1_PATH = r"C:\Users\Shreesh\Desktop\EEG-connectome\R1_mini_L100_bdf"
 
 
 def Load_EEG_file(file = None, montage = "standard_1020"):
@@ -71,8 +75,12 @@ def Load_EEG_file(file = None, montage = "standard_1020"):
             print("Samples:", len(s["time_series"]))
         eeg_stream = None
         marker_stream = None
+<<<<<<< Updated upstream
         if len(streams) >2:
             raise ValueError("Number of streams greater than 2, please check the streams.")
+=======
+
+>>>>>>> Stashed changes
         for stream in streams:
             stream_type = stream["info"]["type"][0]
 

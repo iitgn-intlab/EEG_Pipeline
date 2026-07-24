@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Experiment outputs
+experiments/
+
+# Generated figures
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.pdf
+
+# If you ever save NumPy or MNE outputs
+*.npz
+*.npy
+*.fif
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

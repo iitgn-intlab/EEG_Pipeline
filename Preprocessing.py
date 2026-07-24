@@ -21,7 +21,8 @@ import logging
 logger = logging.getLogger('matplotlib.animation')
 logger.setLevel(logging.DEBUG)
 
-def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 100, reference = "average", auto_rem_ica = True, ica_method = "infomax", bad_channel = True, rem_bad_channel = False, interpolate_bad_channel = True, n_comp_ica = None, remove_labels = ["muscle artifact", "eye blink", "heart beat","line noise","channel noise"], visualize_ica_eye = False):
+def preproc_main(raw, res_freq = 100, notch_freq = None, l_filter = 1, h_filter = 40, reference = "average", auto_rem_ica = True, ica_method = "infomax", bad_channel = True, rem_bad_channel = False, interpolate_bad_channel = True, n_comp_ica=64, remove_labels = ["muscle artifact", "eye blink", "heart beat","line noise","channel noise"], visualize_ica_eye = False):
+>>>>>>> Stashed changes
     """
     This function preprocess a raw file with the following steps:
     1. Resampling.
@@ -33,7 +34,8 @@ def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 
     It then returns the processed raw.
     """
     raw.resample(sfreq = res_freq)
-    raw.notch_filter(freqs = notch_freq, fir_design = "firwin")
+    if notch_freq is not None:
+        raw.notch_filter(freqs = notch_freq, fir_design = "firwin")
     raw.filter(l_freq = l_filter, h_freq = h_filter)
     raw.set_eeg_reference(reference)
     if bad_channel:
@@ -60,6 +62,38 @@ def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 
         ica = ICA(n_components=n_comp_ica, random_state=42, max_iter='auto',method = ica_method,fit_params=dict(extended=True))  #Don't tweak this
         ica.fit(raw)
         ic_labels = label_components(raw, ica, method="iclabel")                    #Don't change
+        print("\n===== ICLabel Predictions =====")
+        labels = ic_labels["labels"]
+        probas = ic_labels["y_pred_proba"]
+        print("\n===== Removal Statistics =====")
+        current_removed = [
+            idx
+            for idx, label in enumerate(labels)
+            if label in remove_labels
+        ]
+        removed_08 = [
+            idx
+            for idx, (label, proba) in enumerate(zip(labels, probas))
+            if label in remove_labels and proba >= 0.80
+        ]
+        removed_09 = [
+            idx
+            for idx, (label, proba) in enumerate(zip(labels, probas))
+            if label in remove_labels and proba >= 0.90
+        ]
+        print(f"Current pipeline removes : {len(current_removed)} components")
+        print(f"Threshold 0.80 removes  : {len(removed_08)} components")
+        print(f"Threshold 0.90 removes  : {len(removed_09)} components")
+
+        print("\nCurrent :", current_removed)
+        print("0.80    :", removed_08)
+        print("0.90    :", removed_09)
+        print("==============================")
+        
+        for idx, (label, proba) in enumerate(zip(labels, probas)):
+            marker = "REMOVE" if label in remove_labels else ""
+            print(f"IC {idx:2d} | {label:18s} | {proba:.3f} | {marker}")
+        print("===============================\n")
         #print(ic_labels)
         labels = ic_labels["labels"]
         if visualize_ica_eye:
@@ -71,7 +105,103 @@ def preproc_main(raw, res_freq = 250, notch_freq = 60, l_filter = 1, h_filter = 
         reconst_raw = raw.copy()
         ica.apply(reconst_raw, exclude=exclude_idx)
         raw = reconst_raw
-    return raw        
+    return raw
+
+def epocher(raw, duration = 10):
+    """
+    This function creates epochs of required duration.
+    """
+    epochs = mne.make_fixed_length_epochs(
+    raw,
+    duration=duration,
+    overlap=0.0,
+    preload=True,
+    verbose=False
+    )
+    return epochs 
+
+def segment_resting_eye_states(
+    raw,
+    open_event="instructed_toOpenEyes",
+    closed_event="instructed_toCloseEyes",
+    resting_start="resting_start",
+    resting_end="break cnt",
+    trim_after_instruction=1.0,
+):
+    """
+    Split a preprocessed continuous Raw recording into
+    Eyes Open and Eyes Closed resting-state segments.
+
+    Parameters
+    ----------
+    raw : mne.io.Raw
+        Preprocessed continuous recording. Must carry the eye-state
+        instructions as annotations (attach events before calling).
+    open_event : str
+        Annotation marking the start of an Eyes Open period.
+    closed_event : str
+        Annotation marking the start of an Eyes Closed period.
+    resting_start : str
+        Annotation indicating the beginning of the resting block.
+    resting_end : str
+        Annotation indicating the end of the resting block
+        (the first occurrence AFTER resting_start).
+    trim_after_instruction : float
+        Seconds to discard immediately after each instruction
+        to avoid eye-movement transition artifacts.
+
+    Returns
+    -------
+    eyes_open_raw : mne.io.Raw
+        Concatenated Eyes Open recording.
+    eyes_closed_raw : mne.io.Raw
+        Concatenated Eyes Closed recording.
+    """
+    ann = raw.annotations
+    if len(ann) == 0:
+        raise ValueError("raw has no annotations; attach events before segmenting.")
+
+    onsets = np.asarray(ann.onset, dtype=float)
+    descs = np.asarray(ann.description, dtype=object)
+    rec_end = float(raw.times[-1])
+
+    # 1) locate the resting block [t0, t1)
+    starts = onsets[descs == resting_start]
+    if starts.size == 0:
+        raise ValueError(f"annotation {resting_start!r} not found.")
+    t0 = float(starts.min())
+    ends = onsets[(descs == resting_end) & (onsets > t0)]   # break AFTER resting_start
+    t1 = float(ends.min()) if ends.size else rec_end
+
+    # 2) eye-state instructions inside the block, in time order
+    is_instr = np.isin(descs, [open_event, closed_event]) & (onsets >= t0) & (onsets < t1)
+    instr_onsets = onsets[is_instr]
+    instr_states = descs[is_instr]
+    order = np.argsort(instr_onsets)
+    instr_onsets, instr_states = instr_onsets[order], instr_states[order]
+    if instr_onsets.size == 0:
+        raise ValueError("no eye-state instructions found inside the resting block.")
+
+    # 3) each instruction runs until the next instruction (or the block end)
+    boundaries = np.append(instr_onsets[1:], t1)
+
+    open_seg, closed_seg = [], []
+    for onset, state, nxt in zip(instr_onsets, instr_states, boundaries):
+        tmin = onset + trim_after_instruction
+        tmax = min(nxt, rec_end)
+        if tmax - tmin <= 0:            # window collapsed by trimming -> skip
+            continue
+        seg = raw.copy().crop(tmin=tmin, tmax=tmax, include_tmax=False)
+        (open_seg if state == open_event else closed_seg).append(seg)
+
+    if not open_seg or not closed_seg:
+        raise ValueError(f"missing a condition: {len(open_seg)} open / "
+                         f"{len(closed_seg)} closed segment(s).")
+
+    eyes_open_raw = mne.concatenate_raws(open_seg)
+    eyes_closed_raw = mne.concatenate_raws(closed_seg)
+    return eyes_open_raw, eyes_closed_raw       
+>>>>>>> Stashed changes
 
 def ocular_fp_evidence(ica, raw_ica_fit,eog_proxy, ocular):
     """Reviewer evidence for ocular ICs, with BOTH a vertical and a horizontal Fp proxy:

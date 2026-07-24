@@ -22,9 +22,26 @@ import logging
 logger = logging.getLogger('matplotlib.animation')
 logger.setLevel(logging.DEBUG)
 
-def FOOOFer(raw,fmin = 1, fmax = 30, n_fft = 250, channel_list = [],peak_width_limits = [1,8], max_n_peaks = 6, plot= True, calc_delta = True, calc_theta = True, calc_alpha = True, calc_beta = True, calc_gamma = True, max_gamma = 100, errors = True ):
-    """
-    This function takes a raw file and fits FOOOF to it. It then returns the values wanted out of the following in the same order:
+def FOOOFer(
+    raw,
+    fmin=1,
+    fmax=30,
+    n_fft=250,
+    channel_list=None,
+    peak_width_limits=[1,8],
+    max_n_peaks=6,
+    plot=True,
+    condition="EEG",
+    save_plots=True,
+    calc_delta=True,
+    calc_theta=True,
+    calc_alpha=True,
+    calc_beta=True,
+    calc_gamma=False,
+    max_gamma=100,
+    errors=True
+):
+    """This function takes a raw file and fits FOOOF to it. It then returns the values wanted out of the following in the same order:
     1. FOOOF Plot
     2. Alpha Peak Frequency and Alpha Peak Power
     3. Beta Peak Frequency and Beta Peak Power
@@ -34,59 +51,101 @@ def FOOOFer(raw,fmin = 1, fmax = 30, n_fft = 250, channel_list = [],peak_width_l
     psd = raw.compute_psd(fmin=1, fmax=30, n_fft=250)               #Keep n_fft = sampling rate
     freqs = psd.freqs
     psds = psd.get_data()
+    if channel_list is None:
+        channel_list = []
     if not channel_list:
         print("no channels listed")
         return None
     result = []
-    channel_results={channel_name for channel_name in channel_list:}
+    channel_results = {channel_name: [] for channel_name in channel_list}
     for channel_name in channel_list:
         result = []
-        psd_vals = psds[channel_name]
+        channel_idx = raw.ch_names.index(channel_name)
+        psd_vals = psds[channel_idx]
         fm = FOOOF(peak_width_limits = peak_width_limits, max_n_peaks = max_n_peaks, aperiodic_mode='fixed',verbose=False)
+        print(f"Running FOOOF on {condition} | {channel_name}")
         fm.fit(freqs,psd_vals)
+        print(f"R² = {fm.r_squared_:.3f}, Error = {fm.error_:.3f}")
         if plot:
-            plot = fm.plot()
-            result.append(plot)
+            fig = fm.plot()
+
+            plt.title(f"{condition} - {channel_name}")
+
+            if save_plots:
+                plt.savefig(
+                    f"{condition.replace(' ', '_')}_{channel_name}_FOOOF.png",
+                    dpi=300,
+                    bbox_inches="tight"
+                )
+            plt.show()
+            result.append(fig)
         if calc_delta:
             delta_peak_freq = get_band_peak_fm(fm, [1, 4], select_highest=True)[0]
             delta_peak_power = get_band_peak_fm(fm, [1, 4], select_highest=True)[1]
-        result.append(delta_peak_freq,delta_peak_power)
+        result.extend([delta_peak_freq, delta_peak_power])
         if calc_theta:
             theta_peak_freq = get_band_peak_fm(fm, [4, 8], select_highest=True)[0]
             theta_peak_power = get_band_peak_fm(fm, [4, 8], select_highest=True)[1]
-        result.append(delta_peak_freq,delta_peak_power)
+        result.extend([theta_peak_freq, theta_peak_power])
         if calc_alpha:
             alpha_peak_freq = get_band_peak_fm(fm, [8, 12], select_highest=True)[0]
             alpha_peak_power = get_band_peak_fm(fm, [8, 12], select_highest=True)[1] 
-        result.append(alpha_peak_freq,alpha_peak_power)
+        result.extend([alpha_peak_freq, alpha_peak_power])
         if calc_beta:
             beta_peak_freq = get_band_peak_fm(fm, [12, 30], select_highest=True)[0]
             beta_peak_power = get_band_peak_fm(fm, [12, 30], select_highest=True)[1]
-        result.append(beta_peak_freq, beta_peak_power)
+        result.extend([beta_peak_freq, beta_peak_power])
         if calc_gamma:
             gamma_peak_freq = get_band_peak_fm(fm, [30, max_gamma], select_highest=True)[0]
             gamma_peak_power = get_band_peak_fm(fm, [30, max_gamma], select_highest=True)[1]
-        result.append(gamma_peak_freq, gamma_peak_power)
+            result.extend([gamma_peak_freq, gamma_peak_power])
         if errors:
             r2 = fm.r_squared_
             error = fm.error_
-            result.append(r2,error)
-        channel_result[channel_name] = result
-    return channel_result
-def connectomer(raw, duration = 10, fmin = 1, fmax = 45):
+            result.extend([r2,error])
+        channel_results[channel_name] = result
+    return channel_results
+def connectomer(raw, duration = 10, band="alpha"):
+    bands = {
+        "delta": (1, 4),
+        "theta": (4, 8),
+        "alpha": (8, 13),
+        "alphabeta": (8,30),
+        "beta": (13, 30),
+        "gamma": (30, 45),
+    }
+    if band not in bands:
+        raise ValueError(f"Unknown band: {band}")
+
+    fmin, fmax = bands[band]
     epochs = epocher(raw, duration = duration)
+    print("Number of epochs:", len(epochs))
     sfreq = raw.info['sfreq']
     con = spectral_connectivity_epochs(
         epochs, 
-        method='plv', 
+        method='wpli2_debiased', #was plv earlier
         sfreq=sfreq, 
         fmin=fmin, 
         fmax=fmax, 
         faverage=True, 
         n_jobs=1
     )
-    
-    con_matrix = con.get_data(output='dense')
+    dense = con.get_data(output="dense")
+    print("Dense output shape:", dense.shape)
+    con_matrix = con.get_data(output='dense')[:, :, 0]
+    con_matrix = np.maximum(con_matrix, con_matrix.T)
+    print("Matrix shape:", con_matrix.shape)
+    print("Matrix symmetric:", np.allclose(con_matrix, con_matrix.T))
+    upper = con_matrix[np.triu_indices_from(con_matrix, k=1)]
+    #lower = con_matrix[np.tril_indices_from(con_matrix, k=-1)]
+
+    print(f"\n===== {band.upper()} PLV =====")
+    print(f"Frequency Band : {fmin}-{fmax} Hz")
+    print(f"Min    : {upper.min():.3f}")
+    print(f"Mean   : {upper.mean():.3f}")
+    print(f"Median : {np.median(upper):.3f}")
+    print(f"Max    : {upper.max():.3f}")
+    print(f"{band.capitalize()} PLV")
     print("Connectivity Matrix Shape:", con_matrix.shape)
     return con_matrix
 
