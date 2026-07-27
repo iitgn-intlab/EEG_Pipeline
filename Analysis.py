@@ -56,15 +56,16 @@ def FOOOFer(
     if not channel_list:
         print("no channels listed")
         return None
-    result = []
-    channel_results = {channel_name: [] for channel_name in channel_list}
+    channel_results = {}
     for channel_name in channel_list:
-        result = []
+        feature_dict = {}
         channel_idx = raw.ch_names.index(channel_name)
         psd_vals = psds[channel_idx]
         fm = FOOOF(peak_width_limits = peak_width_limits, max_n_peaks = max_n_peaks, aperiodic_mode='fixed',verbose=False)
         print(f"Running FOOOF on {condition} | {channel_name}")
         fm.fit(freqs,psd_vals)
+        aperiodic_exponent = fm.aperiodic_params_[1]
+        feature_dict["aperiodic_exponent"] = aperiodic_exponent
         print(f"R² = {fm.r_squared_:.3f}, Error = {fm.error_:.3f}")
         if plot:
             fig = fm.plot()
@@ -78,32 +79,43 @@ def FOOOFer(
                     bbox_inches="tight"
                 )
             plt.show()
-            result.append(fig)
+            #result.append(fig)
         if calc_delta:
-            delta_peak_freq = get_band_peak_fm(fm, [1, 4], select_highest=True)[0]
-            delta_peak_power = get_band_peak_fm(fm, [1, 4], select_highest=True)[1]
-        result.extend([delta_peak_freq, delta_peak_power])
+            #delta_peak_freq = get_band_peak_fm(fm, [1, 4], select_highest=True)[0]
+            #delta_peak_power = get_band_peak_fm(fm, [1, 4], select_highest=True)[1]
+            delta_peak = get_band_peak_fm(fm, [1, 4], select_highest=True)
+            delta_peak_freq = delta_peak[0]
+            delta_peak_power = delta_peak[1]
+        feature_dict["delta_cf"] = delta_peak_freq
+        feature_dict["delta_pw"] = delta_peak_power
         if calc_theta:
             theta_peak_freq = get_band_peak_fm(fm, [4, 8], select_highest=True)[0]
             theta_peak_power = get_band_peak_fm(fm, [4, 8], select_highest=True)[1]
-        result.extend([theta_peak_freq, theta_peak_power])
+        feature_dict["theta_cf"] = theta_peak_freq
+        feature_dict["theta_pw"] = theta_peak_power
         if calc_alpha:
             alpha_peak_freq = get_band_peak_fm(fm, [8, 12], select_highest=True)[0]
             alpha_peak_power = get_band_peak_fm(fm, [8, 12], select_highest=True)[1] 
-        result.extend([alpha_peak_freq, alpha_peak_power])
+        feature_dict["alpha_cf"] = alpha_peak_freq
+        feature_dict["alpha_pw"] = alpha_peak_power
         if calc_beta:
             beta_peak_freq = get_band_peak_fm(fm, [12, 30], select_highest=True)[0]
             beta_peak_power = get_band_peak_fm(fm, [12, 30], select_highest=True)[1]
-        result.extend([beta_peak_freq, beta_peak_power])
+        feature_dict["beta_cf"] = beta_peak_freq
+        feature_dict["beta_pw"] = beta_peak_power
         if calc_gamma:
             gamma_peak_freq = get_band_peak_fm(fm, [30, max_gamma], select_highest=True)[0]
             gamma_peak_power = get_band_peak_fm(fm, [30, max_gamma], select_highest=True)[1]
-            result.extend([gamma_peak_freq, gamma_peak_power])
+            #result.extend([gamma_peak_freq, gamma_peak_power])
+            feature_dict["gamma_cf"] = gamma_peak_freq
+            feature_dict["gamma_pw"] = gamma_peak_power
         if errors:
             r2 = fm.r_squared_
             error = fm.error_
-            result.extend([r2,error])
-        channel_results[channel_name] = result
+            feature_dict["r2"] = r2
+            feature_dict["error"] = error
+        channel_results[channel_name] = feature_dict
+        feature_dict["aperiodic_exponent"] = aperiodic_exponent
     return channel_results
 def connectomer(raw, duration = 10, band="alpha"):
     bands = {
@@ -149,7 +161,7 @@ def connectomer(raw, duration = 10, band="alpha"):
     print("Connectivity Matrix Shape:", con_matrix.shape)
     return con_matrix
 
-def epocher(raw, tmin = -0.2, tmax = 10 ):
-    all_events, all_event_id = mne.events_from_annotations(raw)
-    epochs = mne.Epochs(raw, all_events, event_id=4,baseline = (tmin,0) tmin=tmin, tmax = tmax)
-    return epochs
+# def epocher(raw, tmin = -0.2, tmax = 10 ):
+#     all_events, all_event_id = mne.events_from_annotations(raw)
+#     epochs = mne.Epochs(raw, all_events, event_id=4,baseline = (tmin,0), tmin=tmin, tmax = tmax)
+#     return epochs

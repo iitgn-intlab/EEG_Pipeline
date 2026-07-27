@@ -21,8 +21,7 @@ import logging
 logger = logging.getLogger('matplotlib.animation')
 logger.setLevel(logging.DEBUG)
 
-def preproc_main(raw, res_freq = 100, notch_freq = None, l_filter = 1, h_filter = 40, reference = "average", auto_rem_ica = True, ica_method = "infomax", bad_channel = True, rem_bad_channel = False, interpolate_bad_channel = True, n_comp_ica=64, remove_labels = ["muscle artifact", "eye blink", "heart beat","line noise","channel noise"], visualize_ica_eye = False):
->>>>>>> Stashed changes
+def preproc_main(raw, res_freq = 100, notch_freq = None, l_filter = 1, h_filter = 40, reference = "average", auto_rem_ica = True, ica_method = "infomax", bad_channel = True, rem_bad_channel = False, interpolate_bad_channel = True, n_comp_ica=64, remove_labels = ["muscle artifact", "eye blink", "heart beat","line noise","channel noise"], visualize_ica_eye = False, expected_channels=129):
     """
     This function preprocess a raw file with the following steps:
     1. Resampling.
@@ -33,7 +32,27 @@ def preproc_main(raw, res_freq = 100, notch_freq = None, l_filter = 1, h_filter 
     6. Auto removes ICA components with mne_icalabel.
     It then returns the processed raw.
     """
+    actual_channels = len(raw.ch_names)
+    print("\n===== Channel Validation =====")
+    print(f"Expected channels : {expected_channels}")
+    print(f"Actual channels   : {actual_channels}")
+
+    if actual_channels == expected_channels:
+        print("Channel check     : PASS")
+    else:
+        print("Channel check     : WARNING (unexpected number of channels)")
+    print("==============================\n")
     raw.resample(sfreq = res_freq)
+    actual_sfreq = raw.info["sfreq"]
+    print("\n===== Sampling Rate Validation =====")
+    print(f"Expected sampling rate : {res_freq} Hz")
+    print(f"Actual sampling rate   : {actual_sfreq:.1f} Hz")
+
+    if np.isclose(actual_sfreq, res_freq):
+        print("Sampling check         : PASS")
+    else:
+        print("Sampling check         : WARNING")
+    print("====================================\n")
     if notch_freq is not None:
         raw.notch_filter(freqs = notch_freq, fir_design = "firwin")
     raw.filter(l_freq = l_filter, h_freq = h_filter)
@@ -201,7 +220,6 @@ def segment_resting_eye_states(
     eyes_open_raw = mne.concatenate_raws(open_seg)
     eyes_closed_raw = mne.concatenate_raws(closed_seg)
     return eyes_open_raw, eyes_closed_raw       
->>>>>>> Stashed changes
 
 def ocular_fp_evidence(ica, raw_ica_fit,eog_proxy, ocular):
     """Reviewer evidence for ocular ICs, with BOTH a vertical and a horizontal Fp proxy:

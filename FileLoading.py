@@ -75,12 +75,9 @@ def Load_EEG_file(file = None, montage = "standard_1020"):
             print("Samples:", len(s["time_series"]))
         eeg_stream = None
         marker_stream = None
-<<<<<<< Updated upstream
         if len(streams) >2:
             raise ValueError("Number of streams greater than 2, please check the streams.")
-=======
 
->>>>>>> Stashed changes
         for stream in streams:
             stream_type = stream["info"]["type"][0]
 
