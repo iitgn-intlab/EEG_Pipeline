@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import os
 import glob
+import json
 OCCIPITAL_CHANNELS = [
     "E68",
     "E69",
@@ -219,6 +220,17 @@ for BDF in BDF_FILES:
             eyes_open_raw,
             band="alphabeta"
         )
+        print(f"Eyes Open connectome shape : {eyes_open_alpha.shape}")
+
+        if eyes_open_alpha.shape != (129, 129):
+            print("\nWARNING: Unexpected Eyes Open connectome shape")
+            print(f"Subject      : {subject_id}")
+            print(f"RecordingID  : {recording_id}")
+            print("Expected     : (129, 129)")
+            print(f"Got          : {eyes_open_alpha.shape}")
+            raise ValueError(
+                f"Unexpected Eyes Open connectome shape: {eyes_open_alpha.shape}"
+            )
         np.save(
             os.path.join(
                 "connectomes",
@@ -226,11 +238,41 @@ for BDF in BDF_FILES:
             ),
             eyes_open_alpha
         )
+        metadata = {
+            "Subject": subject_id,
+            "Session": session,
+            "Run": run,
+            "RecordingID": recording_id,
+            "Condition": "Eyes Open",
+            "Band": "alphabeta"
+        }
+
+        with open(
+            os.path.join(
+                "connectomes",
+                f"{recording_id}_eyes_open.json"
+            ),
+            "w"
+        ) as f:
+            json.dump(metadata, f, indent=4)
+            print(f"Saved connectomes/{recording_id}_eyes_open.npy")
+            print(f"Saved connectomes/{recording_id}_eyes_open.json")
 
         eyes_closed_alpha = connectomer(
             eyes_closed_raw,
             band="alphabeta"
         )
+        print(f"Eyes Closed connectome shape : {eyes_closed_alpha.shape}")
+
+        if eyes_closed_alpha.shape != (129, 129):
+            print("\nWARNING: Unexpected Eyes Closed connectome shape")
+            print(f"Subject      : {subject_id}")
+            print(f"RecordingID  : {recording_id}")
+            print("Expected     : (129, 129)")
+            print(f"Got          : {eyes_closed_alpha.shape}")
+            raise ValueError(
+                f"Unexpected Eyes Closed connectome shape: {eyes_closed_alpha.shape}"
+            )
         np.save(
             os.path.join(
                 "connectomes",
@@ -238,6 +280,25 @@ for BDF in BDF_FILES:
             ),
             eyes_closed_alpha
         )
+        metadata = {
+            "Subject": subject_id,
+            "Session": session,
+            "Run": run,
+            "RecordingID": recording_id,
+            "Condition": "Eyes Closed",
+            "Band": "alphabeta"
+        }
+
+        with open(
+            os.path.join(
+                "connectomes",
+                f"{recording_id}_eyes_closed.json"
+            ),
+            "w"
+        ) as f:
+            json.dump(metadata, f, indent=4)
+            print(f"Saved connectomes/{recording_id}_eyes_closed.npy")
+            print(f"Saved connectomes/{recording_id}_eyes_closed.json")
         successful_recordings += 1
         print("[3] Analysis OK")
 
